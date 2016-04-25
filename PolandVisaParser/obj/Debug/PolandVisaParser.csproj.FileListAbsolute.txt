@@ -1,0 +1,17 @@
+E:\Development\PolandVisaParser\PolandVisaParser\bin\Debug\PolandVisaParser.exe.config
+E:\Development\PolandVisaParser\PolandVisaParser\bin\Debug\PolandVisaParser.exe
+E:\Development\PolandVisaParser\PolandVisaParser\bin\Debug\PolandVisaParser.pdb
+E:\Development\PolandVisaParser\PolandVisaParser\bin\Debug\Selenium.WebDriverBackedSelenium.dll
+E:\Development\PolandVisaParser\PolandVisaParser\bin\Debug\ThoughtWorks.Selenium.Core.dll
+E:\Development\PolandVisaParser\PolandVisaParser\bin\Debug\WebDriver.dll
+E:\Development\PolandVisaParser\PolandVisaParser\bin\Debug\WebDriver.Support.dll
+E:\Development\PolandVisaParser\PolandVisaParser\bin\Debug\Selenium.WebDriverBackedSelenium.xml
+E:\Development\PolandVisaParser\PolandVisaParser\bin\Debug\ThoughtWorks.Selenium.Core.xml
+E:\Development\PolandVisaParser\PolandVisaParser\bin\Debug\WebDriver.xml
+E:\Development\PolandVisaParser\PolandVisaParser\bin\Debug\WebDriver.Support.xml
+E:\Development\PolandVisaParser\PolandVisaParser\obj\Debug\PolandVisaParser.csprojResolveAssemblyReference.cache
+E:\Development\PolandVisaParser\PolandVisaParser\obj\Debug\PolandVisaParser.exe
+E:\Development\PolandVisaParser\PolandVisaParser\obj\Debug\PolandVisaParser.pdb
+E:\Development\PolandVisaParser\PolandVisaParser\bin\Debug\chromedriver.exe
+E:\Development\PolandVisaParser\PolandVisaParser\bin\Debug\Newtonsoft.Json.dll
+E:\Development\PolandVisaParser\PolandVisaParser\bin\Debug\Newtonsoft.Json.xml

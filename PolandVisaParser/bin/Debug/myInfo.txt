@@ -1,0 +1,8 @@
+﻿{
+  'ConsulatUrl': 'http://www.polandvisa-ukraine.com/scheduleappointment_2.html',
+  'VisaType': 'Національна',
+  'PeopleCount': 1,
+  'Cities': [
+    'Вінниця'
+  ]
+} 
