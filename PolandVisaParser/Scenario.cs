@@ -1,15 +1,16 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using Newtonsoft.Json;
 using OpenQA.Selenium;
-using OpenQA.Selenium.Support.Extensions;
 using OpenQA.Selenium.Support.UI;
 
 namespace PolandVisaParser {
@@ -40,7 +41,7 @@ namespace PolandVisaParser {
 			webDriver.FindElement( By.Id( "ctl00_plhMain_btnSubmit" ) ).Click();
 		}
 
-		public void Screen_3( IWebDriver webDriver, InputData inputData, string city ) {
+		public async void Screen_3( IWebDriver webDriver, InputData inputData, string city ) {
 			//writting count of aplicants (screen 3)
 			webDriver.FindElement( By.Id( "ctl00_plhMain_tbxNumOfApplicants" ) ).Clear();
 			webDriver.FindElement( By.Id( "ctl00_plhMain_tbxNumOfApplicants" ) ).SendKeys( inputData.PeopleCount.ToString() );
@@ -65,12 +66,23 @@ namespace PolandVisaParser {
 
 			IWebElement captchaPicture = webDriver.FindElement( By.CssSelector( "img[class^=\"rc-image-tile\"]" ) );
 			Point imageDimension = new Point( int.Parse( captchaPicture.GetAttribute( "class" ).Last().ToString() ) );
-			WebClient webClient = new WebClient();
-			byte[] image = webClient.DownloadData(captchaPicture.GetAttribute("src"));
-			using (Stream stream = new MemoryStream(image))
+			byte[] image;
+			using (WebClient webClient = new WebClient())
 			{
-				Image imageSaved = Image.FromStream(stream);
-				imageSaved.Save("clean_Pict.jpg",ImageFormat.Jpeg);
+				image = webClient.DownloadData(captchaPicture.GetAttribute("src"));
+			}
+
+			using( HttpClient httpClient = new HttpClient() ) {
+				var multipart = new MultipartFormDataContent();
+				using (Stream stream = new MemoryStream(image))
+				{
+					multipart.Add( new StreamContent( stream ), "file" );
+					multipart.Add( new StringContent( "d42d830a2b7b1aa751f226c454c4cb55" ), "key" );
+					multipart.Add( new StringContent( "post" ), "method" );
+					using( HttpResponseMessage responsMessage = await httpClient.PostAsync( @"http://2captcha.com/in.php", multipart ) ) {
+
+					}
+				}
 			}
 
 			#region translation description from ukrainian to english
@@ -80,7 +92,7 @@ namespace PolandVisaParser {
 			yandexTranslatorUrlBuilder.Append( "&format=plain" );
 			yandexTranslatorUrlBuilder.Append( "&text=" );
 			yandexTranslatorUrlBuilder.Append( webDriver.FindElement( By.ClassName( "rc-imageselect-desc-no-canonical" ) ).Text );
-			//
+		
 			WebRequest yandexApiRequest = WebRequest.Create( yandexTranslatorUrlBuilder.ToString());
 
 			using (WebResponse yandexApiResponse = yandexApiRequest.GetResponse())

@@ -29,12 +29,7 @@ namespace PolandVisaParser
 				{
 					ChromeOptions chromeOptions = new ChromeOptions();
 					chromeOptions.AddArgument( "--lang=en" );
-					//chromeOptions.AddArgument( "--start-maximized" );
 					chromeOptions.AddUserProfilePreference( "intl.accept_languages", "en-US,en" );
-					//chromeOptions.prefs = new Dictionary<string, object>
-					//{
-					//	{ "intl.accept_languages", "en-US,en" }
-					//};
 
 					IWebDriver webDriver = new ChromeDriver( chromeOptions );
 					webDriversList.Add(webDriver);
