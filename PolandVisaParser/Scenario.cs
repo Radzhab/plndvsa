@@ -4,7 +4,10 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Text;
 using System.Threading;
+using Newtonsoft.Json;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Support.Extensions;
 using OpenQA.Selenium.Support.UI;
@@ -17,7 +20,8 @@ namespace PolandVisaParser {
 		private const string m_firstLevelFrame = "iframe[src^=\"https://polandonline.vfsglobal.com/poland-ukraine-appointment\"]";
 		private const string m_secondLevelFrameCaptchaAnchor = "iframe[src^=\"https://www.google.com/recaptcha/api2/anchor\"]";
 		private const string m_secondLevelFrameCaptchaFrame = "iframe[src^=\"https://www.google.com/recaptcha/api2/frame\"]";
-		const string m_getElementLocationJavascript = "return arguments[0].getBoundingClientRect()";
+		private const string m_getElementLocationJavascript = "return arguments[0].getBoundingClientRect()";
+		private const string m_yandexTranslatorApiKey ="trnsl.1.1.20160426T193513Z.05971e32dddb968e.d76225777061c14376452bb7944a5b70a5105da2";
 
 
 		public void Screen_1(IWebDriver webDriver, InputData inputData, string city) {
@@ -91,6 +95,26 @@ namespace PolandVisaParser {
 					webPageScreenshotBitmap.PixelFormat
 				);
 				webPageScreenshotBitmap.Save( "pictures.jpg", ImageFormat.Jpeg );
+			}
+
+			StringBuilder yandexTranslatorUrlBuilder = new StringBuilder( @"https://translate.yandex.net/api/v1.5/tr.json/translate?key=" );
+			yandexTranslatorUrlBuilder.Append(m_yandexTranslatorApiKey);
+			yandexTranslatorUrlBuilder.Append( "&lang=uk-en" );
+			yandexTranslatorUrlBuilder.Append( "&format=plain" );
+			yandexTranslatorUrlBuilder.Append( "&text=" );
+			yandexTranslatorUrlBuilder.Append( webDriver.FindElement( By.ClassName( "rc-imageselect-desc-no-canonical" ) ).Text );
+			//
+			WebRequest yandexApiRequest = WebRequest.Create( yandexTranslatorUrlBuilder.ToString());
+
+			using (WebResponse yandexApiResponse = yandexApiRequest.GetResponse())
+			{
+				using (Stream data = yandexApiResponse.GetResponseStream())
+				{
+					using( var reader = new StreamReader( data ) ) {
+						dynamic myResponse = JsonConvert.DeserializeObject<dynamic>( reader.ReadToEnd() );
+						string translatedText = myResponse.text[0];
+					}
+				}
 			}
 
 			m_scenarioCompleted = true;

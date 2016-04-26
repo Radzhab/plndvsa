@@ -27,13 +27,14 @@ namespace PolandVisaParser
 				Scenario scenario = new Scenario();
 				foreach (string city in inputData.Cities)
 				{
-					ChromeOptionsWithPrefs chromeOptions = new ChromeOptionsWithPrefs();
+					ChromeOptions chromeOptions = new ChromeOptions();
 					chromeOptions.AddArgument( "--lang=en" );
 					//chromeOptions.AddArgument( "--start-maximized" );
-					chromeOptions.prefs = new Dictionary<string, object>
-					{
-						{ "intl.accept_languages", "en-US,en" }
-					};
+					chromeOptions.AddUserProfilePreference( "intl.accept_languages", "en-US,en" );
+					//chromeOptions.prefs = new Dictionary<string, object>
+					//{
+					//	{ "intl.accept_languages", "en-US,en" }
+					//};
 
 					IWebDriver webDriver = new ChromeDriver( chromeOptions );
 					webDriversList.Add(webDriver);
