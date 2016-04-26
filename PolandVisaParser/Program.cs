@@ -22,7 +22,6 @@ namespace PolandVisaParser
 			ICollection<IWebDriver> webDriversList = new List<IWebDriver>();
 			try
 			{
-				//webDriver = new ChromeDriver();
 				string inputParameters = File.ReadAllText(args[0]);
 				InputData inputData = JsonConvert.DeserializeObject<InputData>( inputParameters );
 				Scenario scenario = new Scenario();
@@ -30,7 +29,7 @@ namespace PolandVisaParser
 				{
 					ChromeOptionsWithPrefs chromeOptions = new ChromeOptionsWithPrefs();
 					chromeOptions.AddArgument( "--lang=en" );
-					chromeOptions.AddArgument( "--start-maximized" );
+					//chromeOptions.AddArgument( "--start-maximized" );
 					chromeOptions.prefs = new Dictionary<string, object>
 					{
 						{ "intl.accept_languages", "en-US,en" }

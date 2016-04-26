@@ -1,20 +1,27 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
+using System.Threading;
 using OpenQA.Selenium;
+using OpenQA.Selenium.Support.Extensions;
 using OpenQA.Selenium.Support.UI;
 
 namespace PolandVisaParser {
 	internal class Scenario {
 
-		private bool scenarioCompleted = false;
+		private bool m_scenarioCompleted = false;
+
+		private const string m_firstLevelFrame = "iframe[src^=\"https://polandonline.vfsglobal.com/poland-ukraine-appointment\"]";
+		private const string m_secondLevelFrameCaptchaAnchor = "iframe[src^=\"https://www.google.com/recaptcha/api2/anchor\"]";
+		private const string m_secondLevelFrameCaptchaFrame = "iframe[src^=\"https://www.google.com/recaptcha/api2/frame\"]";
+		const string m_getElementLocationJavascript = "return arguments[0].getBoundingClientRect()";
+
 
 		public void Screen_1(IWebDriver webDriver, InputData inputData, string city) {
-			webDriver.SwitchTo().Frame(
-				webDriver.FindElement(
-					By.CssSelector( "iframe[src^=\"https://polandonline.vfsglobal.com/poland-ukraine-appointment\"]" )
-				)
-			);
+			webDriver.SwitchTo().Frame(webDriver.FindElement(By.CssSelector( m_firstLevelFrame )));
 			//pushing on find date link (screen 1)
 			webDriver.FindElement( By.Id( "ctl00_plhMain_lnkSchApp" ) ).Click();
 		}
@@ -39,19 +46,54 @@ namespace PolandVisaParser {
 			string visaTypeText = selectVisaType.Options.First( x => x.Text.Contains( inputData.VisaType ) ).Text;
 			selectVisaType.SelectByText( visaTypeText );
 
-			IWebElement captchaFrame = webDriver.FindElement( By.CssSelector( "iframe[src^=\"https://www.google.com/recaptcha/api2\"]" ) );
-
-			webDriver.SwitchTo().Frame(captchaFrame);
+			IWebElement captchaFrame = webDriver.FindElement( By.CssSelector( m_secondLevelFrameCaptchaAnchor ) );
+			webDriver.SwitchTo().Frame( captchaFrame ); // 2 frame level anchor
 
 			//push on captcha checkbox
 			webDriver.FindElement( By.Id( "recaptcha-anchor" ) ).Click();
-			webDriver.Manage().Timeouts().ImplicitlyWait( TimeSpan.FromSeconds( 2 ) );
-
+			webDriver.Manage().Timeouts().ImplicitlyWait(TimeSpan.FromSeconds(5));
+			Thread.Sleep(2000);
 			//get images elements
-			ITakesScreenshot pictures = (ITakesScreenshot)webDriver.FindElement( By.Id( "rc-imageselect-target" ) );
-			Screenshot image = pictures.GetScreenshot();
-			image.SaveAsFile( "pictures", ImageFormat.Jpeg );
-			scenarioCompleted = true;
+			webDriver.SwitchTo().ParentFrame(); // 1 frame level
+			webDriver.SwitchTo().ParentFrame(); // 0 frame level (native html)
+
+			IWebElement firstFrame = webDriver.FindElement( By.CssSelector( m_firstLevelFrame ) );
+			Point centerDivLocationPoint = new Point(firstFrame.Location.X, firstFrame.Location.Y);
+
+			webDriver.SwitchTo().Frame( firstFrame ); // back to 1 frame level
+
+			captchaFrame = webDriver.FindElement( By.CssSelector( m_secondLevelFrameCaptchaFrame ) );
+			webDriver.SwitchTo().Frame( captchaFrame ); // 2 frame level frame
+
+			IWebElement picturesSet = webDriver.FindElement( By.Id( "rc-imageselect-target" ) );
+
+			Dictionary<string, object> getPicturesLocation = (Dictionary<string, object>)( (IJavaScriptExecutor)webDriver).ExecuteScript(
+				m_getElementLocationJavascript, 
+				picturesSet 
+			);
+
+			Rectangle picturesStateRectangle = new Rectangle(
+				(int)double.Parse( getPicturesLocation["left"].ToString() ),
+				(int)double.Parse( getPicturesLocation["top"].ToString() ) +15,
+				(int)double.Parse( getPicturesLocation["width"].ToString() ) + 50,
+				(int)double.Parse( getPicturesLocation["height"].ToString() ) + 50
+			);
+
+			picturesStateRectangle.X += centerDivLocationPoint.X + 60;
+
+			Byte[] webPageScreenshot = webDriver.TakeScreenshot().AsByteArray;
+			using( Stream memoryStream = new MemoryStream( webPageScreenshot ) )
+			{
+				Bitmap webPageScreenshotBitmap = new Bitmap( memoryStream );
+
+				webPageScreenshotBitmap = webPageScreenshotBitmap.Clone(
+					picturesStateRectangle,
+					webPageScreenshotBitmap.PixelFormat
+				);
+				webPageScreenshotBitmap.Save( "pictures.jpg", ImageFormat.Jpeg );
+			}
+
+			m_scenarioCompleted = true;
 		}
 
 		public void TryScenario( 
@@ -61,7 +103,7 @@ namespace PolandVisaParser {
 			string city 
 		) {
 			try {
-				if( scenarioCompleted ) {
+				if( m_scenarioCompleted ) {
 					return;
 				}
 				scenarioStep( webDriver, inputData, city );
