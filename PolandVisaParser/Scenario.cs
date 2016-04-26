@@ -5,6 +5,9 @@ using OpenQA.Selenium.Support.UI;
 
 namespace PolandVisaParser {
 	internal class Scenario {
+
+		private bool scenarioCompleted = false;
+
 		public void Screen_1(IWebDriver webDriver, InputData inputData, string city) {
 			webDriver.SwitchTo().Frame(
 				webDriver.FindElement(
@@ -34,6 +37,8 @@ namespace PolandVisaParser {
 			SelectElement selectVisaType = new SelectElement( webDriver.FindElement( By.Id( "ctl00_plhMain_cboVisaCategory" ) ) );
 			string visaTypeText = selectVisaType.Options.First( x => x.Text.Contains( inputData.VisaType ) ).Text;
 			selectVisaType.SelectByText( visaTypeText );
+
+			scenarioCompleted = true;
 		}
 
 		public void TryScenario( 
@@ -43,6 +48,9 @@ namespace PolandVisaParser {
 			string city 
 		) {
 			try {
+				if( scenarioCompleted ) {
+					return;
+				}
 				scenarioStep( webDriver, inputData, city );
 			} catch (Exception ex) {
 				webDriver.Navigate().GoToUrl( inputData.ConsulatUrl );
@@ -62,7 +70,6 @@ namespace PolandVisaParser {
 
 			//Screen 2
 			TryScenario( Screen_2, webDriver, inputData, city );
-
 			//Screen 3
 			TryScenario( Screen_3, webDriver, inputData, city );
 		}
