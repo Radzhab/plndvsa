@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Drawing.Imaging;
 using System.Linq;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Support.UI;
@@ -38,6 +39,18 @@ namespace PolandVisaParser {
 			string visaTypeText = selectVisaType.Options.First( x => x.Text.Contains( inputData.VisaType ) ).Text;
 			selectVisaType.SelectByText( visaTypeText );
 
+			IWebElement captchaFrame = webDriver.FindElement( By.CssSelector( "iframe[src^=\"https://www.google.com/recaptcha/api2\"]" ) );
+
+			webDriver.SwitchTo().Frame(captchaFrame);
+
+			//push on captcha checkbox
+			webDriver.FindElement( By.Id( "recaptcha-anchor" ) ).Click();
+			webDriver.Manage().Timeouts().ImplicitlyWait( TimeSpan.FromSeconds( 2 ) );
+
+			//get images elements
+			ITakesScreenshot pictures = (ITakesScreenshot)webDriver.FindElement( By.Id( "rc-imageselect-target" ) );
+			Screenshot image = pictures.GetScreenshot();
+			image.SaveAsFile( "pictures", ImageFormat.Jpeg );
 			scenarioCompleted = true;
 		}
 
