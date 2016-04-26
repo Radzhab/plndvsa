@@ -1,13 +1,11 @@
 ﻿using System;
+using System.Collections.Specialized;
 using System.Drawing;
-using System.Drawing.Imaging;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using Newtonsoft.Json;
 using OpenQA.Selenium;
@@ -21,8 +19,8 @@ namespace PolandVisaParser {
 		private const string m_firstLevelFrame = "iframe[src^=\"https://polandonline.vfsglobal.com/poland-ukraine-appointment\"]";
 		private const string m_secondLevelFrameCaptchaAnchor = "iframe[src^=\"https://www.google.com/recaptcha/api2/anchor\"]";
 		private const string m_secondLevelFrameCaptchaFrame = "iframe[src^=\"https://www.google.com/recaptcha/api2/frame\"]";
-		private const string m_getElementLocationJavascript = "return arguments[0].getBoundingClientRect()";
 		private const string m_yandexTranslatorApiKey ="trnsl.1.1.20160426T193513Z.05971e32dddb968e.d76225777061c14376452bb7944a5b70a5105da2";
+		private const string m_2captchaApiKey = "d42d830a2b7b1aa751f226c454c4cb55";
 
 
 		public void Screen_1(IWebDriver webDriver, InputData inputData, string city) {
@@ -72,19 +70,6 @@ namespace PolandVisaParser {
 				image = webClient.DownloadData(captchaPicture.GetAttribute("src"));
 			}
 
-			using( HttpClient httpClient = new HttpClient() ) {
-				var multipart = new MultipartFormDataContent();
-				using (Stream stream = new MemoryStream(image))
-				{
-					multipart.Add( new StreamContent( stream ), "file" );
-					multipart.Add( new StringContent( "d42d830a2b7b1aa751f226c454c4cb55" ), "key" );
-					multipart.Add( new StringContent( "post" ), "method" );
-					using( HttpResponseMessage responsMessage = await httpClient.PostAsync( @"http://2captcha.com/in.php", multipart ) ) {
-
-					}
-				}
-			}
-
 			#region translation description from ukrainian to english
 			StringBuilder yandexTranslatorUrlBuilder = new StringBuilder( @"https://translate.yandex.net/api/v1.5/tr.json/translate?key=" );
 			yandexTranslatorUrlBuilder.Append(m_yandexTranslatorApiKey);
@@ -95,13 +80,56 @@ namespace PolandVisaParser {
 		
 			WebRequest yandexApiRequest = WebRequest.Create( yandexTranslatorUrlBuilder.ToString());
 
+			string translatedText = string.Empty;
 			using (WebResponse yandexApiResponse = yandexApiRequest.GetResponse())
 			{
 				using (Stream data = yandexApiResponse.GetResponseStream())
 				{
 					using( var reader = new StreamReader( data ) ) {
 						dynamic myResponse = JsonConvert.DeserializeObject<dynamic>( reader.ReadToEnd() );
-						string translatedText = myResponse.text[0];
+						translatedText = myResponse.text[0];
+					}
+				}
+			}
+
+			using( WebClient client = new WebClient() ) {
+				byte[] response = client.UploadValues( @"http://2captcha.com/in.php", new NameValueCollection()
+				   {
+					   { "body", Convert.ToBase64String(image) },
+					   { "key", m_2captchaApiKey },
+					   { "method", "base64" },
+					   { "recaptcha", "1" },
+					   { "textinstructions", translatedText },
+					   { "recaptchacols", imageDimension.X.ToString() },
+					   { "recaptcharows", imageDimension.X.ToString() }
+				   } );
+
+				string result = Encoding.UTF8.GetString( response );
+				if (result.StartsWith("OK|"))
+				{
+					string captchaId = result.Substring(3);
+
+					using (HttpClient httpClient = new HttpClient())
+					{
+						StringBuilder stringBuilder = new StringBuilder( @"http://2captcha.com/res.php?key=" );
+						stringBuilder.Append(m_2captchaApiKey);
+						stringBuilder.Append("&action=get");
+						stringBuilder.Append( "&id=" );
+						stringBuilder.Append(captchaId);
+						
+						Thread.Sleep(TimeSpan.FromSeconds(5));
+
+						using( HttpResponseMessage responseMessageResolvedCaptcha = await httpClient.GetAsync( stringBuilder.ToString()) )
+						{
+							using( HttpContent content = responseMessageResolvedCaptcha.Content ) {
+
+								result = await content.ReadAsStringAsync();
+								if( result.StartsWith( "OK|click" ) )
+								{
+									string[] resolvedCaptcha = result.Substring(9).Split('/');
+								}
+							}
+						}
 					}
 				}
 			}
