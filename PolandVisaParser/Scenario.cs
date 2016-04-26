@@ -59,44 +59,21 @@ namespace PolandVisaParser {
 			Thread.Sleep(2000);
 			//get images elements
 			webDriver.SwitchTo().ParentFrame(); // 1 frame level
-			webDriver.SwitchTo().ParentFrame(); // 0 frame level (native html)
-
-			IWebElement firstFrame = webDriver.FindElement( By.CssSelector( m_firstLevelFrame ) );
-			Point centerDivLocationPoint = new Point(firstFrame.Location.X, firstFrame.Location.Y);
-
-			webDriver.SwitchTo().Frame( firstFrame ); // back to 1 frame level
 
 			captchaFrame = webDriver.FindElement( By.CssSelector( m_secondLevelFrameCaptchaFrame ) );
 			webDriver.SwitchTo().Frame( captchaFrame ); // 2 frame level frame
 
-			IWebElement picturesSet = webDriver.FindElement( By.Id( "rc-imageselect-target" ) );
-
-			Dictionary<string, object> getPicturesLocation = (Dictionary<string, object>)( (IJavaScriptExecutor)webDriver).ExecuteScript(
-				m_getElementLocationJavascript, 
-				picturesSet 
-			);
-
-			Rectangle picturesStateRectangle = new Rectangle(
-				(int)double.Parse( getPicturesLocation["left"].ToString() ),
-				(int)double.Parse( getPicturesLocation["top"].ToString() ) +15,
-				(int)double.Parse( getPicturesLocation["width"].ToString() ) + 50,
-				(int)double.Parse( getPicturesLocation["height"].ToString() ) + 50
-			);
-
-			picturesStateRectangle.X += centerDivLocationPoint.X + 60;
-
-			Byte[] webPageScreenshot = webDriver.TakeScreenshot().AsByteArray;
-			using( Stream memoryStream = new MemoryStream( webPageScreenshot ) )
+			IWebElement captchaPicture = webDriver.FindElement( By.CssSelector( "img[class^=\"rc-image-tile\"]" ) );
+			Point imageDimension = new Point( int.Parse( captchaPicture.GetAttribute( "class" ).Last().ToString() ) );
+			WebClient webClient = new WebClient();
+			byte[] image = webClient.DownloadData(captchaPicture.GetAttribute("src"));
+			using (Stream stream = new MemoryStream(image))
 			{
-				Bitmap webPageScreenshotBitmap = new Bitmap( memoryStream );
-
-				webPageScreenshotBitmap = webPageScreenshotBitmap.Clone(
-					picturesStateRectangle,
-					webPageScreenshotBitmap.PixelFormat
-				);
-				webPageScreenshotBitmap.Save( "pictures.jpg", ImageFormat.Jpeg );
+				Image imageSaved = Image.FromStream(stream);
+				imageSaved.Save("clean_Pict.jpg",ImageFormat.Jpeg);
 			}
 
+			#region translation description from ukrainian to english
 			StringBuilder yandexTranslatorUrlBuilder = new StringBuilder( @"https://translate.yandex.net/api/v1.5/tr.json/translate?key=" );
 			yandexTranslatorUrlBuilder.Append(m_yandexTranslatorApiKey);
 			yandexTranslatorUrlBuilder.Append( "&lang=uk-en" );
@@ -116,6 +93,7 @@ namespace PolandVisaParser {
 					}
 				}
 			}
+			#endregion
 
 			m_scenarioCompleted = true;
 		}
