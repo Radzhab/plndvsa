@@ -106,6 +106,10 @@ namespace PolandVisaParser
 
 				Screen_3();
 			}
+			System.Media.SoundPlayer player = new System.Media.SoundPlayer( @"success.wav" );
+			player.Play();
+			Console.ReadKey();
+
 			m_scenarioCompleted = true;
 		}
 	#endregion
@@ -146,7 +150,7 @@ namespace PolandVisaParser
 							year: int.Parse(dateParts[2]),
 							month: (int) monthAbbreviation,
 							day: int.Parse(dateParts[0])
-							);
+						);
 						return true;
 					}
 				}
