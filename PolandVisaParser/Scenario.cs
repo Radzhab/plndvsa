@@ -1,14 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using Newtonsoft.Json;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Support.UI;
@@ -82,16 +80,12 @@ namespace PolandVisaParser
 			SolveCaptcha();
 
 			//writting count of aplicants (screen 3)
-			m_webDriver.FindElement(
-				By.Id("ctl00_plhMain_tbxNumOfApplicants")
-			)
-			.Clear();
-
-			m_webDriver.FindElement
-				(By.Id("ctl00_plhMain_tbxNumOfApplicants")
-			)
-			.SendKeys(m_dataForSearch.PeopleCount);
-
+			IWebElement peopleCountTextBox = m_webDriver.FindElement(
+				By.Id( "ctl00_plhMain_tbxNumOfApplicants" )
+			);
+			peopleCountTextBox.SendKeys( Keys.Backspace );
+			peopleCountTextBox.SendKeys(m_dataForSearch.PeopleCount);
+			
 			//selecting visa type (screen 3)
 			SelectElement selectVisaType = new SelectElement(
 				m_webDriver.FindElement(By.Id("ctl00_plhMain_cboVisaCategory"))
@@ -101,6 +95,17 @@ namespace PolandVisaParser
 				.Text;
 			selectVisaType.SelectByText(visaTypeText);
 
+			string resultOfChecking = m_webDriver.FindElement(By.Id("ctl00_plhMain_lblMsg")).Text;
+
+			if (resultOfChecking == "The image you selected not match")
+			{
+				visaTypeText = selectVisaType.Options
+					.First()
+					.Text;
+				selectVisaType.SelectByText( visaTypeText );
+				
+				Screen_3();
+			}
 			m_scenarioCompleted = true;
 		}
 	#endregion
@@ -129,8 +134,7 @@ namespace PolandVisaParser
 
 			byte[] image;
 			int imageDimension;
-			try
-			{
+			try{
 				IWebElement captchaPicture = m_webDriver.FindElement(
 					By.CssSelector("img[class^=\"rc-image-tile\"]")
 				);
@@ -139,13 +143,11 @@ namespace PolandVisaParser
 					.Last()
 					.ToString()
 				);
-				using (WebClient webClient = new WebClient())
-				{
+				using (WebClient webClient = new WebClient()){
 					image = webClient.DownloadData(captchaPicture.GetAttribute("src"));
 				}
 			}
-			catch (NoSuchElementException)
-			{
+			catch (NoSuchElementException){
 				m_webDriver.SwitchTo().ParentFrame();
 				return;
 			}
@@ -168,8 +170,7 @@ namespace PolandVisaParser
 				imageDimension.ToString(),
 				out captchaSolutionList
 			);
-			if (!isCaptchaSolved)
-			{
+			if (!isCaptchaSolved){
 				throw new NotFoundException("Captcha haven't been solved");
 			}
 
@@ -178,8 +179,7 @@ namespace PolandVisaParser
 				By.ClassName("rc-image-tile-target")
 			);
 
-			foreach (int resCaptcha in captchaSolutionList)
-			{
+			foreach (int resCaptcha in captchaSolutionList){
 				int indexOfCaptchElement = resCaptcha;
 				pictures[indexOfCaptchElement - 1].Click();
 			}
@@ -220,45 +220,55 @@ namespace PolandVisaParser
 					);
 					string result = Encoding.UTF8.GetString(response);
 
-					if (result.StartsWith("OK|"))
-					{
+					if (result.StartsWith("OK|")){
 						string captchaId = result.Substring(3);
 
-						using (HttpClient httpClient = new HttpClient())
-						{
-							StringBuilder stringBuilder = new StringBuilder(@"http://2captcha.com/res.php?key=");
-							stringBuilder.Append(m_2captchaApiKey);
-							stringBuilder.Append("&action=get");
-							stringBuilder.Append("&id=");
-							stringBuilder.Append(captchaId);
-							
-							//waiting 5 seconds for solving captcha service
-							Thread.Sleep(TimeSpan.FromSeconds(5));
-							
-							//sending request to captcha solving service to get solution
-							using (HttpResponseMessage responseMessageResolvedCaptcha = httpClient.GetAsync(stringBuilder.ToString()).Result)
-							{
-								using (HttpContent content = responseMessageResolvedCaptcha.Content)
-								{
-									result = content.ReadAsStringAsync().Result;
-									if (result.StartsWith("OK|click"))
-									{
-										insturctions = result.Substring(9)
-											.Split('/')
-											.Select(int.Parse);
-										return true;
-									}
-								}
-							}
+						result = SendGetRequestToCaptchaService(m_2captchaApiKey, captchaId);
+
+						if( result.StartsWith( "OK|click" ) ) {
+							insturctions = result.Substring( 9 )
+								.Split( '/' )
+								.Select( int.Parse );
+							return true;
 						}
 					}
 				}
 			}
-			catch
-			{
+			catch{
 				return false;
 			}
 			return false;
+		}
+
+		private string SendGetRequestToCaptchaService(
+			string solvingApiKey, 
+			string captchaId
+		){
+			string result = String.Empty;
+			using (HttpClient httpClient = new HttpClient())
+			{
+				StringBuilder stringBuilder = new StringBuilder(@"http://2captcha.com/res.php?key=");
+				stringBuilder.Append(solvingApiKey);
+				stringBuilder.Append("&action=get");
+				stringBuilder.Append("&id=");
+				stringBuilder.Append(captchaId);
+
+				//waiting 5 seconds for solving captcha service
+				Thread.Sleep(TimeSpan.FromSeconds(5));
+
+				//sending request to captcha solving service to get solution
+				using (HttpResponseMessage responseMessageResolvedCaptcha = httpClient.GetAsync(stringBuilder.ToString()).Result){
+					using (HttpContent content = responseMessageResolvedCaptcha.Content){
+						result = content.ReadAsStringAsync().Result;
+
+						if (result == "CAPCHA_NOT_READY"){
+							Thread.Sleep( TimeSpan.FromSeconds( 1 ) );
+							result = SendGetRequestToCaptchaService( m_2captchaApiKey, captchaId );
+						}
+					}
+				}
+			}
+			return result;
 		}
 
 		private void SolveCaptcha(){
@@ -281,41 +291,32 @@ namespace PolandVisaParser
 			yandexTranslatorUrlBuilder.Append(textToTranslate);
 
 			WebRequest yandexApiRequest = WebRequest.Create(yandexTranslatorUrlBuilder.ToString());
-			try
-			{
+			try{
 				//sending request to translation service to get translation from ukraine to english
-				using (WebResponse yandexApiResponse = yandexApiRequest.GetResponse())
-				{
-					using (Stream data = yandexApiResponse.GetResponseStream())
-					{
-						using (var reader = new StreamReader(data))
-						{
+				using (WebResponse yandexApiResponse = yandexApiRequest.GetResponse()){
+					using (Stream data = yandexApiResponse.GetResponseStream()){
+						using (var reader = new StreamReader(data)){
 							dynamic myResponse = JsonConvert.DeserializeObject<dynamic>(reader.ReadToEnd());
 							translatedText = myResponse.text[0];
 						}
 					}
 				}
 			}
-			catch
-			{
+			catch{
 				return null;
 			}
 
 			return translatedText;
 		}
 
-		private void TryScenario(Action scenarioStep)
-		{
-			try
-			{
-				if (m_scenarioCompleted)
-				{
+		private void TryScenario(Action scenarioStep){
+			try{
+				if (m_scenarioCompleted){
 					return;
 				}
 				scenarioStep();
 			}
-			catch (Exception ex)
-			{
+			catch (Exception ex){
 				TryScenario(Screen_1);
 				TryScenario(Screen_2);
 				TryScenario(Screen_3);

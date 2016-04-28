@@ -49,7 +49,6 @@ namespace PolandVisaParser
 
 					//Run scenario
 					scenario.RunScenario();
-
 					Console.WriteLine( "Parser running. For escape, press any button..." );
 					Console.ReadKey();
 				}
