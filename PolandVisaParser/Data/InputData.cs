@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace PolandVisaParser {
+namespace PolandVisaParser.Data {
 	internal sealed class InputData {
 		public string ConsulatUrl { get; set; }
 		public string VisaType { get; set; }

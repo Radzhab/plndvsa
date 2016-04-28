@@ -4,6 +4,7 @@ using System.IO;
 using Newtonsoft.Json;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
+using PolandVisaParser.Data;
 
 namespace PolandVisaParser
 {
@@ -24,7 +25,6 @@ namespace PolandVisaParser
 			{
 				string inputParameters = File.ReadAllText(args[0]);
 				InputData inputData = JsonConvert.DeserializeObject<InputData>( inputParameters );
-				Scenario scenario = new Scenario();
 				foreach (string city in inputData.Cities)
 				{
 					ChromeOptions chromeOptions = new ChromeOptions();
@@ -34,12 +34,21 @@ namespace PolandVisaParser
 					chromeOptions.AddUserProfilePreference( "intl.accept_languages", "en-US,en" );
 					IWebDriver webDriver = new ChromeDriver( chromeOptions );
 					webDriversList.Add(webDriver);
-					
+					DataForSearch dataForSearch = new DataForSearch()
+					{
+						City =  city,
+						ConsulatUrl = inputData.ConsulatUrl,
+						PeopleCount = inputData.PeopleCount.ToString(),
+						VisaType = inputData.VisaType
+					};
+
+					Scenario scenario = new Scenario( webDriver, dataForSearch );
+
 					//Initial goto url
 					webDriver.Navigate().GoToUrl( inputData.ConsulatUrl );
 
 					//Run scenario
-					scenario.RunScenario( webDriver, inputData, city );
+					scenario.RunScenario();
 
 					Console.WriteLine( "Parser running. For escape, press any button..." );
 					Console.ReadKey();
