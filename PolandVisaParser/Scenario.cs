@@ -96,14 +96,14 @@ namespace PolandVisaParser
 			selectVisaType.SelectByText(visaTypeText);
 
 			string resultOfChecking = m_webDriver.FindElement(By.Id("ctl00_plhMain_lblMsg")).Text;
-
-			if (resultOfChecking == "The image you selected not match")
+			DateTime availableDate;
+			if (!TryGetDateFromResponse(resultOfChecking, out availableDate))
 			{
 				visaTypeText = selectVisaType.Options
 					.First()
 					.Text;
 				selectVisaType.SelectByText( visaTypeText );
-				
+
 				Screen_3();
 			}
 			m_scenarioCompleted = true;
@@ -111,6 +111,53 @@ namespace PolandVisaParser
 	#endregion
 
 	#region private steps methods
+
+		private enum MonthAbbreviation
+		{
+			Січ = 1,
+			Лют = 2,
+			Бер = 3,
+			Кві = 4,
+			Тра = 5,
+			Чер = 6,
+			Лип = 7,
+			Сер = 8,
+			Вер = 9,
+			Жов = 10,
+			Лис = 11,
+			Гру = 12,
+		}
+
+		private bool TryGetDateFromResponse(string reponse, out DateTime availableDate) {
+			availableDate = DateTime.MinValue.Date;
+
+			try
+			{
+				string[] dateParts = reponse.Split('.');
+				if (dateParts.Length != 3)
+				{
+					return false;
+				}
+				foreach (MonthAbbreviation monthAbbreviation in Enum.GetValues(typeof (MonthAbbreviation)))
+				{
+					if (dateParts[1] == monthAbbreviation.ToString())
+					{
+						availableDate = new DateTime(
+							year: int.Parse(dateParts[2]),
+							month: (int) monthAbbreviation,
+							day: int.Parse(dateParts[0])
+							);
+						return true;
+					}
+				}
+			}
+			catch
+			{
+				return false;
+			}
+			return false;
+		}
+
 		private void PushOnButtonCaptcha(){
 			IWebElement captchaFrame = m_webDriver.FindElement(
 				By.CssSelector(m_secondLevelFrameCaptchaAnchor)
